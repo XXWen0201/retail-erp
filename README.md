@@ -159,7 +159,23 @@ retail-erp/
 | Node.js | 20.19+ / 22.12+ | 实测 22.22.2 |
 
 数据库、Redis 的连接信息可通过环境变量覆盖：`MYSQL_USER`、`MYSQL_PASSWORD`、`REDIS_HOST`、`REDIS_PORT`。
-AI 的 API Key 用 `DASHSCOPE_API_KEY` 覆盖（不配置则 AI 功能自动降级，不影响其他功能）。
+AI 的 API Key 用 `DASHSCOPE_API_KEY` 覆盖。
+
+### 关于 AI 密钥（重要）
+
+- Spring AI 的自动配置在 `spring.ai.openai.api-key` 为空时会直接抛异常，**应用起不来**。
+  所以仓库里这份 `application-dev.yml` 只放了一个非空占位符，保证 clone 下来能直接启动。
+- 真实密钥写到 **`backend/config/application-dev.yml`**（Spring Boot 会优先读该位置，
+  该文件已被 `.gitignore` 排除，不会进仓库）。仓库里附了模板
+  `backend/config/application-dev.yml.example`，复制改名填入即可。
+- 也可以不用文件，改用环境变量注入：
+
+  ```bash
+  setx DASHSCOPE_API_KEY "sk-你的密钥"     # Windows，需新开终端生效
+  export DASHSCOPE_API_KEY=sk-你的密钥     # macOS / Linux
+  ```
+
+- 没配真实密钥时应用能正常启动，但 AI 助手相关接口会返回「AI 暂不可用」。
 
 ---
 
@@ -270,7 +286,8 @@ python tools/smoke_mini.py            # 23 项，小程序端双令牌模式与 
    - 前端遇到 401 自动续期并重放原请求，用「单例 Promise」防止并发刷新风暴
 
 4. **AI 是增强而不是依赖**：补货数量永远由本地算法给，AI 只写解释性文字；
-   `ObjectProvider` 注入让未配置密钥时应用照常启动，调用时自动降级。
+   网关用 `ObjectProvider` 取 `ChatClient.Builder`，「Bean 不存在」被当作正常状态处理，
+   而不是启动失败 —— 一个可选功能不该有拖垮整个应用的能力。
 
 5. **补货算法参数可解释**：移动平均算日均销量 → 安全库存 = Z × 日销量标准差 × √到货周期 →
    补货点 = 日均销量 × 到货周期 + 安全库存，每个中间量都在接口里返回，答辩时可直接对着数据讲。

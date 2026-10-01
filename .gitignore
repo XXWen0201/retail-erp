@@ -48,7 +48,8 @@ desktop.ini
 application-local.yml
 application-local.properties
 # Spring Boot 会优先读这里的配置，真实密钥就放这儿（不进仓库）
-backend/config/
+# 只忽略真实文件；同目录的 application-dev.yml.example 会提交，方便别人照抄
+backend/config/application-dev.yml
 
 # ---- 微信开发者工具的本机私有配置 ----
 miniprogram/project.private.config.json

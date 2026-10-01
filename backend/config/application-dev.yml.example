@@ -1,0 +1,24 @@
+# =====================================================================
+#  本地私有配置 —— 模板
+# ---------------------------------------------------------------------
+#  用法：把本文件复制一份、改名为同目录下的 application-dev.yml，填上自己的密钥。
+#
+#  为什么放这里：Spring Boot 会优先加载 ./config/ 目录下的配置，优先级高于
+#  classpath 里的同名文件。所以真实密钥写这一份，代码仓库里那份只留占位符。
+#
+#  同目录下真实的 application-dev.yml 已被根 .gitignore 排除，不会提交。
+#
+#  也可以不建这个文件，改用环境变量（二者取其一即可）：
+#      setx DASHSCOPE_API_KEY "sk-你的密钥"      # Windows，需新开终端
+#      export DASHSCOPE_API_KEY=sk-你的密钥      # macOS / Linux
+#
+#  启动时工作目录需为 backend/（`cd backend && java -jar target/xxx.jar`），
+#  这样 ./config/ 才指向本目录。
+# =====================================================================
+
+spring:
+  ai:
+    openai:
+      # 阿里云百炼（DashScope）API Key
+      # 申请地址：https://bailian.console.aliyun.com/
+      api-key: sk-在这里填入你自己的密钥

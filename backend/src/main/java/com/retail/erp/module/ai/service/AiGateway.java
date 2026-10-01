@@ -14,15 +14,19 @@ import java.util.List;
  * AI 调用网关
  *
  * 所有跟大模型打交道的地方都必须经过这里，统一负责三件事：
- *   1. 可用性判断 —— 没配 api-key 时 ChatClient 压根不存在，不能让它变成启动失败
+ *   1. 可用性判断 —— ChatClient 不存在时，不能让它变成启动失败
  *   2. 异常兜底 —— 欠费、限流、超时、网络不通全部捕获，转成 degraded 结果，
  *      绝不让一个「锦上添花」的功能把主流程带崩
  *   3. 统一取模型名，方便记录调用日志与前端展示
  *
  * 为什么用 ObjectProvider 而不是直接注入 ChatClient.Builder：
- * Spring AI 的自动配置是「有 api-key 才创建 ChatModel」。如果直接注入，
- * 一旦有人把密钥撤掉，应用会在启动阶段就因为找不到 Bean 而整个起不来 ——
+ * Spring AI 只有在能拿到有效 api-key 时才创建 ChatModel。直接注入的话，
+ * 一旦 AI 被关掉、或密钥被撤走，应用会在启动阶段就因为找不到 Bean 而整个起不来 ——
  * 一个可选功能不该有这种杀伤力。ObjectProvider 让「没有」也成为一种正常状态。
+ *
+ * 注意：靠「api-key 留空」是降不了级的 —— Spring AI 的语音等自动配置在密钥为空时
+ * 会直接抛 IllegalArgumentException，应用根本起不来。所以配置层必须给一个非空值，
+ * 真正的降级点在这里（bean 拿不到就走本地算法），而不在配置层。
  */
 @Slf4j
 @Service
