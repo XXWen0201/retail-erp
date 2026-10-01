@@ -1,0 +1,60 @@
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/retail_erp?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:123456}
+    hikari:
+      pool-name: RetailErpHikari
+      # 连接池参数：小门店规模，20 条足够；配太大反而拖慢数据库
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      connection-test-query: SELECT 1
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      database: 0
+      timeout: 3000ms
+      lettuce:
+        pool:
+          max-active: 16
+          max-idle: 8
+          min-idle: 2
+          max-wait: 3000ms
+
+  # ---------------------------------------------------------------------
+  # Spring AI：用 OpenAI 兼容协议接阿里云百炼（DashScope）
+  #
+  # 为什么走 OpenAI 兼容而不是 spring-ai-alibaba-starter：
+  #   1. 依赖更少，只依赖 spring-ai-starter-model-openai，没有额外版本对齐负担
+  #   2. DashScope 的 compatible-mode 与 OpenAI 协议一致，换模型（通义/DeepSeek/Kimi）
+  #      只需改 model 字段，代码零改动
+  #   3. 原生支持流式输出（SSE）与 Function Calling，已实测通过
+  #
+  # ⚠️ api-key 属于敏感信息，生产环境请务必改为环境变量注入：
+  #      export DASHSCOPE_API_KEY=sk-xxxx
+  #    申请地址：https://bailian.console.aliyun.com/
+  # ---------------------------------------------------------------------
+  ai:
+    openai:
+      base-url: ${AI_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode}
+      api-key: ${DASHSCOPE_API_KEY:sk-REPLACE_WITH_YOUR_OWN_DASHSCOPE_KEY}
+      chat:
+        options:
+          model: ${AI_MODEL:qwen-plus}
+          temperature: 0.7
+
+mybatis-plus:
+  configuration:
+    # 开发环境打印完整 SQL，方便调优与排查；生产务必关掉
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+logging:
+  level:
+    com.retail.erp: DEBUG
+    org.springframework.ai: INFO

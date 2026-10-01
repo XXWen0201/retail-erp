@@ -1,0 +1,106 @@
+server:
+  port: 8080
+  # 优雅停机：收到停止信号后先拒绝新请求，等在途请求处理完再退出，
+  # 避免部署时正在下单的用户看到连接被重置
+  shutdown: graceful
+  tomcat:
+    threads:
+      max: 200
+      min-spare: 20
+    max-connections: 8192
+    accept-count: 200
+
+spring:
+  application:
+    name: retail-erp
+  profiles:
+    active: dev
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+      fail-on-empty-beans: false
+  mvc:
+    throw-exception-if-no-handler-found: true
+    # SSE 流式问答是用 Flux 返回的异步请求，容器默认 30 秒就会把连接掐掉。
+    # 模型生成长回答时很容易超过 30 秒，这里放宽到 3 分钟
+    async:
+      request-timeout: 180s
+  web:
+    resources:
+      add-mappings: false
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    cache-enabled: false
+  global-config:
+    banner: false
+    db-config:
+      id-type: auto
+      # 逻辑删除：@TableLogic 字段的全局约定，删除时 UPDATE deleted=1
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# ---------------------------------------------------------------------
+# 业务参数：启动时由 AppProperties 校验，配错直接启动失败
+# ---------------------------------------------------------------------
+app:
+  name: 中小零售门店进销存与库存预警管理系统
+  jwt:
+    # 生产环境务必用环境变量覆盖：export APP_JWT_SECRET=...
+    # 长度必须 >= 32 字节，否则应用启动时会直接报错
+    secret: ${APP_JWT_SECRET:retail-erp-graduation-project-jwt-secret-key-2026-please-change-me}
+    access-token-minutes: 30
+    refresh-token-days: 7
+    cookie-secure: false
+    cookie-same-site: Lax
+  stock:
+    # DB = 数据库乐观锁；REDIS = Redis+Lua 原子扣减。用压测接口对比两者差异
+    deduct-mode: DB
+    max-retry: 3
+    cache-ttl-seconds: 3600
+  alert:
+    # 距今 30 天内到期算临期
+    near-expiry-days: 30
+    scheduled: true
+    cron: "0 0 7,19 * * ?"
+  cors:
+    allowed-origins:
+      - http://localhost:5173
+      - http://127.0.0.1:5173
+      - http://localhost:4173
+    allow-credentials: true
+    max-age: 3600
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+  health:
+    redis:
+      enabled: true
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+  api-docs:
+    path: /v3/api-docs
+
+logging:
+  level:
+    root: INFO
+    com.retail.erp: DEBUG

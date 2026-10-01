@@ -1,0 +1,35 @@
+/* ------------------------------------------------------------------
+ * 主题变量
+ *
+ * uni-app 会把本文件自动注入到每个 vue 文件的 <style lang="scss"> 里，
+ * 所以在页面里直接写 $erp-primary 就能用，不需要手动 @import。
+ * 色板与 PC 管理端保持一致，两端看起来是同一个系统。
+ * ------------------------------------------------------------------ */
+
+/* 品牌色 */
+$erp-primary: #2f6bff;
+$erp-primary-deep: #1d4ed8;
+$erp-primary-soft: #eaf1ff;
+
+/* 语义色 */
+$erp-danger: #f5483b;
+$erp-danger-soft: #fdeceb;
+$erp-warning: #ff9f1c;
+$erp-warning-soft: #fff4e5;
+$erp-success: #17b26a;
+$erp-success-soft: #e7f8f0;
+
+/* 文字 */
+$erp-text: #1f2733;
+$erp-text-sub: #6b7787;
+$erp-text-muted: #9aa4b2;
+
+/* 背景与分隔 */
+$erp-bg: #f4f6fa;
+$erp-card: #ffffff;
+$erp-border: #e9edf5;
+
+/* 形状 */
+$erp-radius: 24rpx;
+$erp-radius-sm: 12rpx;
+$erp-shadow: 0 4rpx 20rpx rgba(31, 39, 51, 0.05);

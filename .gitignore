@@ -1,0 +1,54 @@
+# ============================================================
+#  下面这些目录/文件都不该进版本库
+#
+#  ⚠️ 密钥怎么放：
+#    classpath 里的 application-dev.yml 只写占位符，可以安全提交；
+#    真实密钥放在 backend/config/application-dev.yml —— 该目录已被忽略。
+#    详见 README「配置与密钥」一节。
+# ============================================================
+
+# ---- Java / Maven ----
+target/
+*.class
+*.jar
+*.war
+!.mvn/wrapper/maven-wrapper.jar
+
+# ---- Node ----
+node_modules/
+frontend/dist/
+frontend/dist-verify/
+miniprogram/dist/
+miniprogram/unpackage/
+package-lock.json.bak
+
+# ---- 构建与运行产物 ----
+*.log
+logs/
+*.tmp
+
+# ---- IDE ----
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.settings/
+.classpath
+.project
+
+# ---- 操作系统 ----
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- 本地私有配置 / 密钥 ----
+.env
+.env.local
+application-local.yml
+application-local.properties
+# Spring Boot 会优先读这里的配置，真实密钥就放这儿（不进仓库）
+backend/config/
+
+# ---- 微信开发者工具的本机私有配置 ----
+miniprogram/project.private.config.json
