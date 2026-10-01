@@ -135,7 +135,7 @@ onMounted(load)
   white-space: pre-wrap;
   line-height: 1.9;
   font-size: 14px;
-  color: #1f2d3d;
+  color: #303133;
   max-height: 50vh;
   overflow-y: auto;
   background: #fafbfc;

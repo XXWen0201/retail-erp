@@ -17,7 +17,7 @@ target/
 # ---- Node ----
 node_modules/
 frontend/dist/
-frontend/dist-verify/
+frontend/dist-*/
 miniprogram/dist/
 miniprogram/unpackage/
 package-lock.json.bak

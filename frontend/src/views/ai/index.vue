@@ -452,7 +452,7 @@ onBeforeUnmount(() => {
 
 .msg-ai .bubble {
   background: #fff;
-  color: #1f2d3d;
+  color: #303133;
   border: 1px solid #ebeef5;
   border-top-left-radius: 2px;
 }
@@ -501,7 +501,7 @@ onBeforeUnmount(() => {
   min-height: 200px;
   line-height: 1.9;
   font-size: 14px;
-  color: #1f2d3d;
+  color: #303133;
   white-space: normal;
 }
 </style>
