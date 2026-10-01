@@ -291,3 +291,66 @@ python tools/smoke_mini.py            # 23 项，小程序端双令牌模式与 
 
 5. **补货算法参数可解释**：移动平均算日均销量 → 安全库存 = Z × 日销量标准差 × √到货周期 →
    补货点 = 日均销量 × 到货周期 + 安全库存，每个中间量都在接口里返回，答辩时可直接对着数据讲。
+
+---
+
+## 七、版本管理与回滚
+
+仓库地址：<https://github.com/XXWen0201/retail-erp>
+
+> 单独写这一节是因为踩过坑：项目最初没进版本库，后来做界面改版想退回原样，
+> 没有历史可查，只能从构建产物里把源码一点点反推出来。现在已入库，动代码前先提交一次，
+> 不满意随时退，不要再吃这个亏。
+
+### 推送不需要密码
+
+本机 SSH 公钥已挂到 GitHub 账号，`git push` 直接可用。远程地址是
+`ssh://git@github.com/XXWen0201/retail-erp.git` —— 写成 `ssh://` 这种形式是为了绕开全局配置里
+`url.https://github.com/.insteadOf git@github.com:` 那条会把 SSH 地址改写成 HTTPS 的规则，
+否则会报 `could not read Username for 'https://github.com'`。
+
+### 日常三条命令
+
+```bash
+git status                                    # 先看改了哪些文件
+git add -A && git commit -m "这次改了什么"     # 存一个还原点
+git push                                      # 推到 GitHub
+```
+
+**改界面、改样式这类"可能想退回去"的操作之前，务必先 commit 一次。**
+
+### 想退回去
+
+```bash
+git log --oneline                  # 找到目标提交号
+git diff v1.0                      # 先看当前状态和基线差在哪
+git checkout v1.0 -- .             # 只把文件内容退回基线，提交历史保留
+git commit -m "回滚到 v1.0"
+```
+
+彻底丢弃当前分支上的改动（⚠️ 未提交的内容会一起丢）：
+
+```bash
+git reset --hard <提交号>
+```
+
+### 基线标签
+
+`v1.0` 打在「功能完整、界面未经改版」这个状态上，随时可以一键回到它：
+
+```bash
+git checkout -b restore-v1.0 v1.0   # 从基线拉个分支出来对照着看
+git checkout main                    # 看完切回来
+```
+
+### 不会进仓库的东西
+
+`target/`、`node_modules/`、`frontend/dist/`、日志，以及**真实密钥**所在的
+`backend/config/application-dev.yml`，都在 `.gitignore` 里，不会上传。
+
+密钥的正确放法见 [`backend/config/application-dev.yml.example`](backend/config/application-dev.yml.example)：
+仓库里那份 `application-dev.yml` 只留占位符，真实密钥放同目录下被忽略的私有文件，
+或改用 `DASHSCOPE_API_KEY` 环境变量注入。
+
+构建产物默认不入库。但它有个副作用值得记一笔：**真要抢救源码时，一份旧的 `dist/` 就是最后的凭据**，
+所以准备做大的界面改动前，除了 commit，也可以顺手把 `dist/` 复制一份留底。
