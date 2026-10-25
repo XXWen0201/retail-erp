@@ -37,6 +37,10 @@ public class Product implements Serializable {
     /** 分类 id */
     private Long categoryId;
 
+    @TableField("supplier_id")
+    /** 主供应商 id，补货时按该供应商的历史采购单算实际到货周期 */
+    private Long supplierId;
+
     /** 规格 */
     private String spec;
 

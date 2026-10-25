@@ -12,6 +12,9 @@ public class AiProductRow {
     private String productName;
     private String unit;
 
+    /** 商品的主供应商，用于查该供应商的实际到货周期 */
+    private Long supplierId;
+
     private BigDecimal purchasePrice;
     private Integer stockUpper;
     private Integer stockLower;

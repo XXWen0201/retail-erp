@@ -2,6 +2,7 @@ package com.retail.erp.module.ai.mapper;
 
 import com.retail.erp.module.ai.dto.AiProductRow;
 import com.retail.erp.module.ai.dto.DailySalesRow;
+import com.retail.erp.module.ai.dto.SupplierLeadTimeRow;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -25,6 +26,7 @@ public interface AiMapper {
             SELECT p.id              AS productId,
                    p.name            AS productName,
                    p.unit            AS unit,
+                   p.supplier_id     AS supplierId,
                    p.purchase_price  AS purchasePrice,
                    p.stock_upper     AS stockUpper,
                    p.stock_lower     AS stockLower,
@@ -71,4 +73,30 @@ public interface AiMapper {
             """)
     List<AiProductRow> searchProductStock(@Param("keyword") String keyword,
                                           @Param("limit") int limit);
+
+    /**
+     * 按供应商统计实际到货周期
+     *
+     * 口径说明：
+     *   - 只算 status = FINISHED 且 receive_time 非空的单子，草稿和作废单没有真实到货时间
+     *   - 用 DATEDIFF(DATE(receive_time), order_date)：下单当天到货记 0 天，
+     *     这是真实存在的（本地供应商当天送），不能当成脏数据过滤掉
+     *   - 负数说明入库时间早于下单时间，属于录入错误，直接排除，
+     *     否则会把平均值拉低，补货点跟着算小，反而更容易断货
+     *   - 只统计最近 180 天：供应商的响应速度会变，两年前的 20 天不该影响今天的决策
+     */
+    @Select("""
+            SELECT o.supplier_id                                   AS supplierId,
+                   MAX(o.supplier_name)                            AS supplierName,
+                   COUNT(*)                                        AS sampleCount,
+                   ROUND(AVG(DATEDIFF(DATE(o.receive_time), o.order_date)), 1) AS avgLeadDays
+            FROM purchase_order o
+            WHERE o.deleted = 0
+              AND o.status = 'FINISHED'
+              AND o.receive_time IS NOT NULL
+              AND DATEDIFF(DATE(o.receive_time), o.order_date) >= 0
+              AND o.order_date >= DATE_SUB(CURDATE(), INTERVAL 180 DAY)
+            GROUP BY o.supplier_id
+            """)
+    List<SupplierLeadTimeRow> selectSupplierLeadTimes();
 }

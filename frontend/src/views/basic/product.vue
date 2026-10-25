@@ -35,6 +35,9 @@
         <el-table-column prop="code" label="编码" width="100" />
         <el-table-column prop="name" label="商品名称" min-width="180" show-overflow-tooltip />
         <el-table-column prop="categoryName" label="分类" width="110" />
+        <el-table-column prop="supplierName" label="主供应商" width="160" show-overflow-tooltip>
+          <template #default="{ row }">{{ row.supplierName || '-' }}</template>
+        </el-table-column>
         <el-table-column prop="spec" label="规格" width="110" show-overflow-tooltip />
         <el-table-column prop="unit" label="单位" width="70" align="center" />
         <el-table-column label="进价" width="90" align="right">
@@ -128,6 +131,18 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
+            <el-form-item label="主供应商" prop="supplierId">
+              <el-select
+                v-model="form.supplierId"
+                placeholder="请选择（补货时按该供应商的到货周期计算）"
+                clearable
+                style="width: 100%"
+              >
+                <el-option v-for="s in suppliers" :key="s.id" :label="s.name" :value="s.id" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
             <el-form-item label="规格" prop="spec">
               <el-input v-model="form.spec" placeholder="如 12支/盒" />
             </el-form-item>
@@ -207,6 +222,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Refresh, Search } from '@element-plus/icons-vue'
 import { createProduct, deleteProduct, pageProducts, updateProduct } from '@/api/product'
 import { listCategories } from '@/api/category'
+import { supplierOptions } from '@/api/supplier'
 import { STOCK_STATUS, money, num } from '@/utils/format'
 
 const loading = ref(false)
@@ -214,6 +230,7 @@ const saving = ref(false)
 const rows = ref([])
 const total = ref(0)
 const categories = ref([])
+const suppliers = ref([])
 
 const query = reactive({
   keyword: '',
@@ -263,6 +280,14 @@ async function loadCategories() {
   }
 }
 
+async function loadSuppliers() {
+  try {
+    suppliers.value = (await supplierOptions()) || []
+  } catch {
+    /* 拦截器已提示 */
+  }
+}
+
 /* ---------------- 表单 ---------------- */
 const formVisible = ref(false)
 const formRef = ref()
@@ -273,6 +298,7 @@ const emptyForm = () => ({
   barcode: '',
   name: '',
   categoryId: null,
+  supplierId: null,
   spec: '',
   unit: '',
   purchasePrice: 0,
@@ -344,6 +370,7 @@ async function onDelete(row) {
 
 onMounted(() => {
   loadCategories()
+  loadSuppliers()
   load()
 })
 </script>

@@ -66,6 +66,15 @@ SUPPLIERS = [
     (6, "SUP006", "湖南新希望乳业配送中心", "吴晓燕", "13873100066", "长沙市长沙县星沙大道 199 号"),
 ]
 
+# 各供应商的实际到货周期（天）
+# 为什么要有差异：真实门店里「文具批发要等一周、鲜奶隔天就到」是常态。
+# 如果所有供应商都是 3 天，补货算法里「按供应商算实际到货周期」就失去意义，
+# 演示时也看不出效果。这里刻意拉开差距：
+#   6 乳业  1 天（每日配送）      3 饮料  2 天（本地供应链，周转快）
+#   2 食品  3 天（常规）          5 粮油  4 天（大宗商品，需调货）
+#   4 日化  5 天（非紧急品类）    1 文具  7 天（批发市场，凑单才发货）
+LEAD_DAYS = {1: 7, 2: 3, 3: 2, 4: 5, 5: 4, 6: 1}
+
 # (id, code, name, category_id, spec, unit, purchase_price, sale_price,
 #  stock_upper, stock_lower, shelf_life_days, supplier_id)
 PRODUCTS = [
@@ -232,7 +241,8 @@ for pid, info in PINFO.items():
         "id": po_seq, "no": po_no, "sid": info["sup"],
         "sname": next(s[2] for s in SUPPLIERS if s[0] == info["sup"]),
         "qty": target, "amount": round(target * info["pp"], 2),
-        "status": "FINISHED", "date": ts.date(), "recv": ts,
+        "status": "FINISHED", "date": ts.date(),
+        "recv": ts + timedelta(days=LEAD_DAYS[info["sup"]], hours=random.randint(0, 6)),
     })
 
 # ---------------- 2.2 补货逻辑（按天调用，不能一次性跑完） ----------------
@@ -271,7 +281,12 @@ def do_replenish(order_day):
             "id": po_seq, "no": po_no, "sid": sup,
             "sname": next(s[2] for s in SUPPLIERS if s[0] == sup),
             "qty": tqty, "amount": round(tamt, 2),
-            "status": "FINISHED", "date": ts.date(), "recv": ts,
+            "status": "FINISHED", "date": ts.date(),
+            # 实际到货时间必须晚于下单时间，否则「到货周期」恒为 0，
+            # 补货算法就永远学不到真实的供应商响应速度。
+            # 每个供应商给一个固定的响应特征 + 小幅随机波动，
+            # 这样按供应商统计出来的均值才有区分度、也才稳定可复现。
+            "recv": ts + timedelta(days=LEAD_DAYS[sup], hours=random.randint(0, 6)),
         })
 
 # ---------------- 2.3 按天推进销售，与补货交错 ----------------
@@ -414,14 +429,14 @@ w("")
 
 w("-- ---------- 商品 ----------")
 w("INSERT INTO product (id, code, barcode, name, category_id, spec, unit, "
-  "purchase_price, sale_price, stock_upper, stock_lower, shelf_life_days, status) VALUES")
+  "purchase_price, sale_price, stock_upper, stock_lower, shelf_life_days, status, supplier_id) VALUES")
 rows = []
 for pid, info in PINFO.items():
     barcode = f"69{pid:04d}{random.randint(100000, 999999)}"
     rows.append(f"({pid}, '{info['code']}', '{barcode}', '{q(info['name'])}', "
                 f"{info['cid']}, '{q(info['spec'])}', '{info['unit']}', "
                 f"{info['pp']:.2f}, {info['sp']:.2f}, {info['upper']}, "
-                f"{info['lower']}, {info['life']}, 1)")
+                f"{info['lower']}, {info['life']}, 1, {info['sup']})")
 w(",\n".join(rows) + ";")
 w("")
 

@@ -31,6 +31,9 @@ public record ProductSaveDTO(
         @NotNull(message = "请选择商品分类")
         Long categoryId,
 
+        /** 主供应商，可为空；填了之后补货会按该供应商的实际到货周期计算 */
+        Long supplierId,
+
         @Size(max = 64, message = "规格不能超过 64 个字符")
         String spec,
 

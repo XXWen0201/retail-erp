@@ -268,11 +268,11 @@ python tools/smoke_mini.py            # 23 项，小程序端双令牌模式与 
 ### 7. 并发一致性与核心算法单元测试
 
 冒烟测试是黑盒的，需要一个已经跑起来的后端。**关键逻辑另有不依赖启动服务的自动化测试**，
-`mvn test` 直接跑，当前共 **23 个用例**：
+`mvn test` 直接跑，当前共 **26 个用例**：
 
 ```bash
 cd backend
-mvn test                              # 全部 23 个
+mvn test                              # 全部 26 个
 mvn test -Dtest=StockConcurrencyTest  # 只跑并发一致性
 mvn test -Dtest=ReplenishCalculatorTest  # 只跑补货算法
 mvn test -Dtest=LoginAttemptServiceTest  # 只跑登录锁定
@@ -281,7 +281,7 @@ mvn test -Dtest=LoginAttemptServiceTest  # 只跑登录锁定
 | 测试类 | 用例数 | 覆盖内容 |
 |---|---|---|
 | `StockConcurrencyTest` | 3 | 50 线程并发不超卖；每次扣多件时按数量累计；库存仅 10 件时 200 次请求最多成功 10 次 |
-| `ReplenishCalculatorTest` | 15 | 安全库存用 √到货周期而非到货周期；补货点与建议量公式；缺销量的天按 0 补齐；紧急程度分级 |
+| `ReplenishCalculatorTest` | 18 | 安全库存用 √到货周期而非到货周期；补货点与建议量公式；缺销量的天按 0 补齐；紧急程度分级；到货周期按供应商取值 |
 | `LoginAttemptServiceTest` | 5 | 未达上限不锁；达上限锁定；登录成功清零；用户名归一化；计数带 TTL |
 
 > 为什么优先测这三块：它们是**算错了不会报错**的地方。库存扣错会立刻抛异常，
@@ -315,6 +315,9 @@ mvn test -Dtest=LoginAttemptServiceTest  # 只跑登录锁定
 
 5. **补货算法参数可解释**：移动平均算日均销量 → 安全库存 = Z × 日销量标准差 × √到货周期 →
    补货点 = 日均销量 × 到货周期 + 安全库存，每个中间量都在接口里返回，答辩时可直接对着数据讲。
+   **到货周期不是写死的 3 天**，而是按商品所属供应商从历史采购单实测：
+   `DATEDIFF(receive_time, order_date)` 取均值，样本不足 2 单的供应商退回兜底值。
+   演示数据里文具批发 7 天、乳业配送 1 天，同一套公式算出来的补货点差一倍多 —— 这正是按供应商区分的意义。
 
 6. **登录失败锁定：防的是字典攻击，不是防用户**
    - 连续失败 5 次锁定 10 分钟，计数在 Redis（内存计数重启就清零、多实例各算各的，等于没防护）

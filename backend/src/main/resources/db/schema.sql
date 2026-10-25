@@ -76,6 +76,7 @@ CREATE TABLE product (
     barcode         VARCHAR(64)            DEFAULT NULL COMMENT '条形码',
     name            VARCHAR(100)  NOT NULL COMMENT '商品名称',
     category_id     BIGINT        NOT NULL COMMENT '分类 id',
+    supplier_id     BIGINT                 DEFAULT NULL COMMENT '主供应商，用于按供应商统计实际到货周期',
     spec            VARCHAR(64)            DEFAULT NULL COMMENT '规格',
     unit            VARCHAR(16)   NOT NULL DEFAULT '个' COMMENT '单位',
     purchase_price  DECIMAL(12,2) NOT NULL DEFAULT 0.00 COMMENT '参考进价',
@@ -90,6 +91,7 @@ CREATE TABLE product (
     PRIMARY KEY (id),
     UNIQUE KEY uk_product_code (code),
     KEY idx_product_category (category_id),
+    KEY idx_product_supplier (supplier_id),
     KEY idx_product_name (name)
 ) ENGINE = InnoDB COMMENT '商品表';
 

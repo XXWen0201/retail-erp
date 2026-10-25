@@ -19,6 +19,8 @@ public class ProductVO {
     private String name;
     private Long categoryId;
     private String categoryName;
+    private Long supplierId;
+    private String supplierName;
     private String spec;
     private String unit;
     private BigDecimal purchasePrice;

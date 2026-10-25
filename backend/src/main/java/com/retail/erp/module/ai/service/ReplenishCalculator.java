@@ -37,7 +37,14 @@ public class ReplenishCalculator {
     /** 服务水平 95% 对应的 Z 值 */
     public static final BigDecimal Z_95 = BigDecimal.valueOf(1.65);
 
-    /** 供应商到货周期（天）。真实项目里应该按供应商分别配置，这里统一取 3 天 */
+    /**
+     * 供应商到货周期的兜底值（天）
+     *
+     * 只有在「该供应商没有足够的历史到货记录」时才会用到。
+     * 真实值由 ReplenishService 从采购单统计后传进来 —— 固定值的问题是
+     * 文具批发要等一周、鲜奶隔天就到，用一个 3 天去套所有供应商，
+     * 要么给鲜奶算多了安全库存，要么给文具算少了、该补的时候没补。
+     */
     public static final int LEAD_TIME_DAYS = 3;
 
     /** 没有设置库存上限时，按多少天的销量作为目标库存 */
@@ -45,31 +52,49 @@ public class ReplenishCalculator {
 
     /** 算法说明，直接展示给用户，也方便答辩时解释 */
     public static final String ALGORITHM_DESC =
-            "移动平均 + 安全库存（服务水平 95%，Z=1.65，到货周期 3 天）";
+            "移动平均 + 安全库存（服务水平 95%，Z=1.65，到货周期按供应商历史采购单实测）";
 
     /**
-     * 计算单品补货建议
+     * 计算单品补货建议（使用兜底到货周期）
      *
-     * @param product  商品与当前库存
-     * @param avgDaily 近 N 天日均销量
-     * @param stdDev   近 N 天日销量标准差（没有销量的天按 0 计入）
-     * @param days     统计窗口天数
-     * @return 补货建议；如果这个商品不需要补货则返回 null
+     * 保留这个重载是为了让单元测试和「供应商数据缺失」的调用方不用被迫传参。
      */
     public ReplenishSuggestionVO calculate(AiProductRow product,
                                            BigDecimal avgDaily,
                                            BigDecimal stdDev,
                                            int days) {
+        return calculate(product, avgDaily, stdDev, days, LEAD_TIME_DAYS);
+    }
+
+    /**
+     * 计算单品补货建议
+     *
+     * @param product     商品与当前库存
+     * @param avgDaily    近 N 天日均销量
+     * @param stdDev      近 N 天日销量标准差（没有销量的天按 0 计入）
+     * @param days        统计窗口天数
+     * @param leadTimeDays 该商品所属供应商的实际到货周期（天）
+     * @return 补货建议；如果这个商品不需要补货则返回 null
+     */
+    public ReplenishSuggestionVO calculate(AiProductRow product,
+                                           BigDecimal avgDaily,
+                                           BigDecimal stdDev,
+                                           int days,
+                                           int leadTimeDays) {
         int current = product.getQuantity() == null ? 0 : product.getQuantity();
         int lower = product.getStockLower() == null ? 0 : product.getStockLower();
         int upper = product.getStockUpper() == null ? 0 : product.getStockUpper();
 
+        // 到货周期至少按 1 天算：0 天会让安全库存和到货期间需求都变成 0，
+        // 补货点退化成 0，等于「没货了才补」，失去了提前备货的意义
+        int lead = Math.max(leadTimeDays, 1);
+
         int safetyStock = Z_95.multiply(stdDev)
-                .multiply(BigDecimal.valueOf(Math.sqrt(LEAD_TIME_DAYS)))
+                .multiply(BigDecimal.valueOf(Math.sqrt(lead)))
                 .setScale(0, RoundingMode.CEILING)
                 .intValue();
 
-        int leadTimeDemand = avgDaily.multiply(BigDecimal.valueOf(LEAD_TIME_DAYS))
+        int leadTimeDemand = avgDaily.multiply(BigDecimal.valueOf(lead))
                 .setScale(0, RoundingMode.CEILING)
                 .intValue();
         int reorderPoint = leadTimeDemand + safetyStock;
@@ -100,7 +125,7 @@ public class ReplenishCalculator {
         vo.setAvgDailySales(avgDaily.setScale(2, RoundingMode.HALF_UP));
         vo.setAvgWeeklySales(avgDaily.multiply(BigDecimal.valueOf(7)).setScale(2, RoundingMode.HALF_UP));
         vo.setSafetyStock(safetyStock);
-        vo.setLeadTimeDays(LEAD_TIME_DAYS);
+        vo.setLeadTimeDays(lead);
         vo.setReorderPoint(reorderPoint);
         vo.setSuggestQuantity(suggestQuantity);
 

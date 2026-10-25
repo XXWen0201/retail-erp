@@ -12,9 +12,11 @@ import com.retail.erp.module.basic.dto.ProductSaveDTO;
 import com.retail.erp.module.basic.dto.ProductVO;
 import com.retail.erp.module.basic.entity.Category;
 import com.retail.erp.module.basic.entity.Product;
+import com.retail.erp.module.basic.entity.Supplier;
 import com.retail.erp.module.basic.mapper.CategoryMapper;
 import com.retail.erp.module.basic.mapper.ProductMapper;
 import com.retail.erp.module.basic.mapper.ProductPageMapper;
+import com.retail.erp.module.basic.mapper.SupplierMapper;
 import com.retail.erp.module.stock.entity.Stock;
 import com.retail.erp.module.stock.mapper.StockMapper;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +41,7 @@ public class ProductService {
     private final ProductMapper productMapper;
     private final ProductPageMapper productPageMapper;
     private final CategoryMapper categoryMapper;
+    private final SupplierMapper supplierMapper;
     private final StockMapper stockMapper;
 
     public PageResult<ProductVO> page(ProductQuery query) {
@@ -142,6 +145,7 @@ public class ProductService {
         vo.setBarcode(product.getBarcode());
         vo.setName(product.getName());
         vo.setCategoryId(product.getCategoryId());
+        vo.setSupplierId(product.getSupplierId());
         vo.setSpec(product.getSpec());
         vo.setUnit(product.getUnit());
         vo.setPurchasePrice(product.getPurchasePrice());
@@ -154,6 +158,10 @@ public class ProductService {
             Category category = categoryMapper.selectById(product.getCategoryId());
             vo.setCategoryName(category == null ? null : category.getName());
         }
+        if (product.getSupplierId() != null) {
+            Supplier supplier = supplierMapper.selectById(product.getSupplierId());
+            vo.setSupplierName(supplier == null ? null : supplier.getName());
+        }
         return vo;
     }
 
@@ -162,6 +170,7 @@ public class ProductService {
         entity.setBarcode(dto.barcode());
         entity.setName(dto.name());
         entity.setCategoryId(dto.categoryId());
+        entity.setSupplierId(dto.supplierId());
         entity.setSpec(dto.spec());
         entity.setUnit(dto.unit());
         entity.setPurchasePrice(dto.purchasePrice());

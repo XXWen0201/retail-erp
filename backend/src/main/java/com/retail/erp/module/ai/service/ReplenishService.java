@@ -11,6 +11,7 @@ import com.retail.erp.module.ai.dto.DailySalesRow;
 import com.retail.erp.module.ai.dto.ReplenishAnalyzeVO;
 import com.retail.erp.module.ai.dto.ReplenishSuggestionVO;
 import com.retail.erp.module.ai.dto.ReplenishSuggestionsVO;
+import com.retail.erp.module.ai.dto.SupplierLeadTimeRow;
 import com.retail.erp.module.ai.entity.AiLog;
 import com.retail.erp.module.ai.mapper.AiLogMapper;
 import com.retail.erp.module.ai.mapper.AiMapper;
@@ -82,6 +83,9 @@ public class ReplenishService {
         Map<Long, Map<String, Long>> salesByProduct = groupSalesByProduct(
                 aiMapper.selectDailySales(start, today));
 
+        // 一次查完所有供应商的到货周期，避免在循环里逐个查库（N+1 查询）
+        Map<Long, Integer> leadTimeBySupplier = loadLeadTimes();
+
         List<ReplenishSuggestionVO> items = new ArrayList<>();
         for (AiProductRow product : products) {
             List<Long> series = calculator.toDailySeries(
@@ -89,7 +93,8 @@ public class ReplenishService {
             ReplenishCalculator.Stats stats = calculator.computeStats(series, days);
 
             ReplenishSuggestionVO vo = calculator.calculate(
-                    product, stats.avgDaily(), stats.stdDev(), days);
+                    product, stats.avgDaily(), stats.stdDev(), days,
+                    leadTimeOf(leadTimeBySupplier, product.getSupplierId()));
             if (vo != null) {
                 items.add(vo);
             }
@@ -130,7 +135,8 @@ public class ReplenishService {
 
         List<Long> series = calculator.toDailySeries(byDate, start, days);
         ReplenishCalculator.Stats stats = calculator.computeStats(series, days);
-        return calculator.calculate(product, stats.avgDaily(), stats.stdDev(), days);
+        return calculator.calculate(product, stats.avgDaily(), stats.stdDev(), days,
+                leadTimeOf(loadLeadTimes(), product.getSupplierId()));
     }
 
     // ==================================================================
@@ -250,6 +256,53 @@ public class ReplenishService {
         return result;
     }
 
+    // ==================================================================
+    //  供应商到货周期
+    // ==================================================================
+
+    /** 供应商没有足够历史样本时使用的兜底天数 */
+    private static final int MIN_SAMPLE_COUNT = 2;
+
+    /** 到货周期的合理上限：超过这个值多半是脏数据，宁可用兜底值 */
+    private static final int MAX_REASONABLE_LEAD_DAYS = 60;
+
+    /**
+     * 从历史采购单统计各供应商的实际到货周期
+     *
+     * 只保留样本量 >= MIN_SAMPLE_COUNT 的供应商：一单的记录可能只是偶发，
+     * 比如某次供应商刚好缺货拖了 20 天，拿这个当规律会让补货点虚高、门店压一堆货。
+     * 样本不足的直接不放进 Map，由 leadTimeOf 退回兜底值。
+     */
+    private Map<Long, Integer> loadLeadTimes() {
+        Map<Long, Integer> result = new HashMap<>();
+        for (SupplierLeadTimeRow row : aiMapper.selectSupplierLeadTimes()) {
+            if (row.getSupplierId() == null || row.getAvgLeadDays() == null) {
+                continue;
+            }
+            int sample = row.getSampleCount() == null ? 0 : row.getSampleCount();
+            if (sample < MIN_SAMPLE_COUNT) {
+                continue;
+            }
+            double avg = row.getAvgLeadDays();
+            if (avg < 0 || avg > MAX_REASONABLE_LEAD_DAYS) {
+                log.warn("供应商到货周期异常已忽略 supplierId={} avg={} sample={}",
+                        row.getSupplierId(), avg, sample);
+                continue;
+            }
+            // 四舍五入到整数天：补货是「大概几天后到」的决策，小数点没有意义
+            result.put(row.getSupplierId(), (int) Math.round(avg));
+        }
+        return result;
+    }
+
+    /** 取某供应商的到货周期，查不到就用兜底值 */
+    private int leadTimeOf(Map<Long, Integer> leadTimes, Long supplierId) {
+        if (supplierId == null) {
+            return ReplenishCalculator.LEAD_TIME_DAYS;
+        }
+        return leadTimes.getOrDefault(supplierId, ReplenishCalculator.LEAD_TIME_DAYS);
+    }
+
     /** 商品在窗口内一笔没卖、库存也正常时，构造一个「无需补货」的载体供 AI 分析使用 */
     private ReplenishSuggestionVO zeroSuggestion(Long productId, int days) {
         Product product = productMapper.selectById(productId);
@@ -266,7 +319,7 @@ public class ReplenishService {
         vo.setAvgDailySales(java.math.BigDecimal.ZERO);
         vo.setAvgWeeklySales(java.math.BigDecimal.ZERO);
         vo.setSafetyStock(0);
-        vo.setLeadTimeDays(ReplenishCalculator.LEAD_TIME_DAYS);
+        vo.setLeadTimeDays(leadTimeOf(loadLeadTimes(), product.getSupplierId()));
         vo.setReorderPoint(0);
         vo.setSuggestQuantity(0);
         vo.setEstCost(java.math.BigDecimal.ZERO);

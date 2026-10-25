@@ -115,6 +115,63 @@ class ReplenishCalculatorTest {
     }
 
     // ==================================================================
+    //  按供应商的到货周期
+    // ==================================================================
+
+    @Nested
+    @DisplayName("到货周期按供应商取")
+    class LeadTime {
+
+        @Test
+        @DisplayName("到货周期越长，补货点越高（文具 7 天 vs 乳品 1 天）")
+        void longerLeadTimeRaisesReorderPoint() {
+            // 同样的销量与库存，只改到货周期。
+            // 库存取 8：日均 10 时，1 天补货点约 13、7 天约 79，
+            // 两个场景都低于各自补货点，才能都拿到建议来对比
+            ReplenishSuggestionVO fast = calculator.calculate(
+                    product(8, 0, 1000), new BigDecimal("10"), new BigDecimal("2"), 30, 1);
+            ReplenishSuggestionVO slow = calculator.calculate(
+                    product(8, 0, 1000), new BigDecimal("10"), new BigDecimal("2"), 30, 7);
+
+            assertNotNull(fast, "到货 1 天、库存 8 低于补货点约 13，应该触发建议");
+            assertNotNull(slow, "到货 7 天、库存 8 远低于补货点约 79，更应该触发建议");
+
+            assertEquals(1, fast.getLeadTimeDays());
+            assertEquals(7, slow.getLeadTimeDays());
+            assertTrue(slow.getReorderPoint() > fast.getReorderPoint(),
+                    "到货周期 7 天的补货点必须高于 1 天的，否则供应商差异没起作用");
+        }
+
+        @Test
+        @DisplayName("安全库存按 √到货周期缩放，不是线性")
+        void safetyStockScalesWithSqrt() {
+            // 标准差 2：1 天 -> ceil(1.65×2×1) = 4；9 天 -> ceil(1.65×2×3) = 10
+            ReplenishSuggestionVO oneDay = calculator.calculate(
+                    product(0, 0, 1000), new BigDecimal("1"), new BigDecimal("2"), 30, 1);
+            ReplenishSuggestionVO nineDays = calculator.calculate(
+                    product(0, 0, 1000), new BigDecimal("1"), new BigDecimal("2"), 30, 9);
+
+            assertNotNull(oneDay);
+            assertNotNull(nineDays);
+            assertEquals(4, oneDay.getSafetyStock(), "1 天安全库存 = ceil(1.65×2×1) = 4");
+            assertEquals(10, nineDays.getSafetyStock(),
+                    "9 天安全库存 = ceil(1.65×2×3) = 10；若为 36 说明误用了线性 ×9");
+        }
+
+        @Test
+        @DisplayName("到货周期为 0 时按 1 天处理，补货点不会退化成 0")
+        void zeroLeadTimeFallsBackToOne() {
+            ReplenishSuggestionVO vo = calculator.calculate(
+                    product(0, 0, 100), new BigDecimal("10"), BigDecimal.ZERO, 30, 0);
+
+            assertNotNull(vo);
+            assertEquals(1, vo.getLeadTimeDays(), "到货周期 0 应被兜底成 1 天");
+            assertEquals(10, vo.getReorderPoint(),
+                    "补货点应为日均 10 × 1 天 = 10，不能是 0（否则等于没货才补）");
+        }
+    }
+
+    // ==================================================================
     //  是否需要补货
     // ==================================================================
 

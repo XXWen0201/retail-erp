@@ -29,12 +29,14 @@ public interface ProductPageMapper {
     @Select("""
             <script>
             SELECT p.id, p.code, p.barcode, p.name, p.category_id, c.name AS category_name,
+                   p.supplier_id, sup.name AS supplier_name,
                    p.spec, p.unit, p.purchase_price, p.sale_price,
                    p.stock_upper, p.stock_lower, p.shelf_life_days, p.status,
                    IFNULL(s.quantity, 0)  AS stock_quantity,
                    IFNULL(s.avg_cost, 0)  AS avg_cost
             FROM product p
             LEFT JOIN category c ON c.id = p.category_id AND c.deleted = 0
+            LEFT JOIN supplier sup ON sup.id = p.supplier_id AND sup.deleted = 0
             LEFT JOIN stock    s ON s.product_id = p.id
             WHERE p.deleted = 0
             <if test="q.keyword != null and q.keyword != ''">
