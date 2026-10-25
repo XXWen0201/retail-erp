@@ -67,6 +67,7 @@ public class AuthService {
     private final RefreshTokenMapper refreshTokenMapper;
     private final PasswordService passwordService;
     private final JwtService jwtService;
+    private final LoginAttemptService loginAttemptService;
     private final AppProperties props;
 
     // ------------------------------------------------------------------
@@ -75,17 +76,40 @@ public class AuthService {
 
     @Transactional(rollbackFor = Exception.class)
     public LoginVO login(LoginDTO dto, HttpServletResponse response) {
+        String username = dto.username();
+
+        // 先看是否已被锁定。放在查库之前，锁定期间连数据库都不用碰，
+        // 顺带省掉了被锁账号的查询开销
+        long lockedSeconds = loginAttemptService.lockedSeconds(username);
+        if (lockedSeconds > 0) {
+            long minutes = Math.max(1, (lockedSeconds + 59) / 60);
+            throw new BizException(ErrorCode.LOGIN_LOCKED,
+                    "密码错误次数过多，账号已临时锁定，请 " + minutes + " 分钟后再试");
+        }
+
         SysUser user = userMapper.selectOne(Wrappers.<SysUser>lambdaQuery()
-                .eq(SysUser::getUsername, dto.username()));
+                .eq(SysUser::getUsername, username));
 
         // 故意把「账号不存在」与「密码错误」合并成同一个提示，
         // 否则攻击者可以靠提示差异枚举出系统里有哪些账号
         if (user == null || !passwordService.matches(dto.password(), user.getPassword())) {
-            throw new BizException(ErrorCode.LOGIN_FAILED);
+            long fails = loginAttemptService.recordFailure(username);
+            int remain = loginAttemptService.remainingAttempts(username);
+            if (remain <= 0) {
+                throw new BizException(ErrorCode.LOGIN_LOCKED,
+                        "密码错误次数过多，账号已临时锁定 " + props.getLogin().getLockMinutes() + " 分钟");
+            }
+            // 提示里带上剩余次数：内部系统的员工看到「还能试 3 次」会立刻停手找管理员，
+            // 比反复试到被锁更友好
+            throw new BizException(ErrorCode.LOGIN_FAILED,
+                    "账号或密码错误，还可尝试 " + remain + " 次");
         }
         if (user.getStatus() == null || user.getStatus() != 1) {
             throw new BizException(ErrorCode.ACCOUNT_DISABLED);
         }
+
+        // 登录成功立即清零，否则之前输错的次数会一直累积到锁定
+        loginAttemptService.clear(username);
 
         boolean mini = dto.miniClient();
 

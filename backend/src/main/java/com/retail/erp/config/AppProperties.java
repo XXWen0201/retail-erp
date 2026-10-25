@@ -44,6 +44,10 @@ public class AppProperties {
     @NotNull
     private Cors cors = new Cors();
 
+    @Valid
+    @NotNull
+    private Login login = new Login();
+
     @Data
     public static class Jwt {
         /** 签名密钥，HMAC-SHA256 要求至少 32 字节。生产环境必须用环境变量覆盖 */
@@ -115,5 +119,38 @@ public class AppProperties {
 
         /** 预检请求缓存秒数，减少 OPTIONS 往返 */
         private long maxAge = 3600L;
+    }
+
+    /**
+     * 登录保护
+     *
+     * 为什么需要它：没有失败次数限制时，攻击者可以用字典对着 /api/auth/login
+     * 无限次尝试。演示账号密码是 123456，被撞开只是时间问题。
+     *
+     * 计数放在 Redis 而不是内存：内存计数在多实例部署下各算各的，
+     * 而且重启就清零，等于没有防护。
+     */
+    @Data
+    public static class Login {
+        /** 连续失败多少次后锁定 */
+        @Min(1)
+        @Max(100)
+        private int maxFailCount = 5;
+
+        /** 锁定时长（分钟）。到期自动解锁，不需要管理员介入 */
+        @Min(1)
+        @Max(1440)
+        private int lockMinutes = 10;
+
+        /**
+         * 失败计数的统计窗口（分钟）
+         *
+         * 与锁定时长分开配置的原因：窗口决定「多久算一次连续失败」。
+         * 如果窗口比锁定时长还短，会出现「失败 4 次，隔一会儿再试 4 次」永远凑不满的绕过路径。
+         * 默认与锁定时长一致。
+         */
+        @Min(1)
+        @Max(1440)
+        private int failWindowMinutes = 10;
     }
 }

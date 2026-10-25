@@ -33,6 +33,7 @@ public enum ErrorCode {
     RETURN_QTY_EXCEED(4008, "退货数量超过原单可退数量"),
     ACCOUNT_DISABLED(4009, "账号已被禁用，请联系管理员"),
     LOGIN_FAILED(4010, "账号或密码错误"),
+    LOGIN_LOCKED(4011, "密码错误次数过多，账号已临时锁定，请稍后再试"),
 
     INTERNAL_ERROR(500, "系统繁忙，请稍后重试"),
     DB_ERROR(501, "数据操作失败"),

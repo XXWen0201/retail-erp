@@ -77,6 +77,11 @@ app:
       - http://localhost:4173
     allow-credentials: true
     max-age: 3600
+  login:
+    # 连续失败 5 次锁定 10 分钟。计数在 Redis 里，到期自动解锁
+    max-fail-count: 5
+    lock-minutes: 10
+    fail-window-minutes: 10
 
 management:
   endpoints:
