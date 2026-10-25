@@ -128,6 +128,8 @@ retail-erp/
 │       ├── config/                # 后端地址（真机调试改这里）
 │       ├── static/tabbar/         # tabBar 图标（脚本生成）
 │       └── pages/                 # 14 个页面
+├── backend/src/test/              # 后端单元测试（26 个，mvn test）
+├── miniprogram/tests/             # 移动端令牌测试（18 个，npm test，零依赖）
 ├── docs/                          # 交付文档
 │   ├── api-contract.md            # 后端接口契约
 │   ├── architecture.md            # 架构与关键设计决策
@@ -283,6 +285,26 @@ mvn test -Dtest=LoginAttemptServiceTest  # 只跑登录锁定
 | `StockConcurrencyTest` | 3 | 50 线程并发不超卖；每次扣多件时按数量累计；库存仅 10 件时 200 次请求最多成功 10 次 |
 | `ReplenishCalculatorTest` | 18 | 安全库存用 √到货周期而非到货周期；补货点与建议量公式；缺销量的天按 0 补齐；紧急程度分级；到货周期按供应商取值 |
 | `LoginAttemptServiceTest` | 5 | 未达上限不锁；达上限锁定；登录成功清零；用户名归一化；计数带 TTL |
+
+移动端另有一套不依赖启动服务的测试（零安装，用 Node 内置 `node:test`）：
+
+```bash
+cd miniprogram
+npm test        # 18 个用例
+```
+
+| 分组 | 用例数 | 覆盖内容 |
+|---|---|---|
+| 令牌存取 | 6 | 访问令牌只放内存不落盘；刷新令牌持久化；只更新访问令牌时不误清刷新令牌；存储故障降级 |
+| 请求封装 | 5 | 自动解包；按需带 Authorization 头；业务错误码透出；网络异常转 code=-1 |
+| 401 自动续期 | 4 | 续期后重放原请求且带新令牌；并发 401 只刷新一次；刷新失败清令牌并回调；刷新接口不递归 |
+| 冷启动恢复 | 3 | 用本地刷新令牌静默换新令牌；无令牌时不发空请求；已有令牌时不重复刷新 |
+
+> 为什么用 `node:test` 而不是 vitest：项目原本没有前端测试框架，而当前环境 npm registry 不可达，
+> 装不上 vitest。`node:test` 是 Node 18+ 内置的，零依赖零安装，测这两块纯逻辑完全够用。
+> `tests/esm-loader.mjs` 负责补两件事：把 `from '../config'` 这种目录导入补全成 `index.js`，
+> 以及裁掉 uni-app 的 `// #ifdef H5` 条件编译注释 —— 后者在 Node 里只是普通注释，
+> 会导致 `API_BASE` 重复声明而语法报错。这些适配只在测试期生效，不影响打包产物。
 
 > 为什么优先测这三块：它们是**算错了不会报错**的地方。库存扣错会立刻抛异常，
 > 但补货量算错只会安静地建议多进或少进一批货，要一两周后才发现压货或断货。
