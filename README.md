@@ -135,6 +135,7 @@ retail-erp/
 │   ├── architecture.md            # 架构与关键设计决策
 │   ├── defense-notes.md           # 答辩要点（含可能被问的问题）
 │   ├── deployment.md              # 部署说明
+│   ├── operations.md              # 日常运维与答辩前准备（刷新数据 / 自检清单 / 排错）
 │   ├── miniprogram.md             # 移动端接入与调试
 │   ├── screenshots/               # PC 端系统截图
 │   └── screenshots-mini/          # 移动端系统截图
@@ -183,19 +184,24 @@ AI 的 API Key 用 `DASHSCOPE_API_KEY` 覆盖。
 
 ## 五、启动步骤
 
+> 📌 **日常运维、答辩前刷新数据、排错，见 [`docs/operations.md`](docs/operations.md)。**
+> 尤其是**答辩前一天必须重跑一次种子数据**，否则「今日销售额」会是 0 —— 原因见该文档第一节。
+
 ### 1. 初始化数据库
 
 ```bash
 cd backend/src/main/resources/db
 
-# 建库 + 建表
+# 建库 + 建表（schema.sql 开头有 DROP DATABASE IF EXISTS，会整库重建）
 mysql -uroot -p123456 < schema.sql
 
 # 灌入种子数据（30 个商品、90 天销售流水、含演示用的临期/过期/低库存数据）
 mysql -uroot -p123456 retail_erp < data.sql
 ```
 
-> 两个脚本都是可重复执行的（建表用 `DROP TABLE IF EXISTS`，数据先清后插）。
+> ⚠️ **顺序不能反，也不能只重跑第二条**：`data.sql` 里没有 `DELETE`/`TRUNCATE`，
+> 直接重复导入会报 `Duplicate entry '1' for key 'sys_user.PRIMARY'`。
+> 想刷新数据就两条都跑一遍。
 
 ### 2. 启动后端
 
