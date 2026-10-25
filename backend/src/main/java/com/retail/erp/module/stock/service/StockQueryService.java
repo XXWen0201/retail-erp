@@ -188,6 +188,7 @@ public class StockQueryService {
         result.setQps(costMs.get() > 0 ? totalRequests * 1000.0 / costMs.get() : 0);
         result.setBeforeStock(beforeStock);
         result.setFinalStock(finalStock);
+        result.setQuantityPerRequest(quantityPerRequest);
         result.computeConsistency();
         result.setMessage(buildBenchmarkMessage(result, mode));
 
@@ -197,13 +198,18 @@ public class StockQueryService {
     }
 
     private String buildBenchmarkMessage(BenchmarkResult r, StockDeductMode mode) {
+        // 文案里的算式必须和 computeConsistency 用同一个公式，
+        // 否则会出现「结论说不一致、算式却显示相等」的自相矛盾输出
+        int per = r.getQuantityPerRequest() <= 0 ? 1 : r.getQuantityPerRequest();
+        String calc = "压测前 " + r.getBeforeStock()
+                + " - 成功 " + r.getSuccessCount() + " 次 × " + per + " 件/次 = "
+                + (r.getBeforeStock() - r.getExpectedDeducted());
+
         if (!r.isConsistent()) {
-            return "❌ 数据不一致：压测前 " + r.getBeforeStock() + " - 成功 " + r.getSuccessCount()
-                    + " = " + (r.getBeforeStock() - r.getSuccessCount())
-                    + "，但实际库存是 " + r.getFinalStock() + "，存在超卖或漏扣，请立即排查";
+            return "❌ 数据不一致：" + calc + "，但实际库存是 " + r.getFinalStock()
+                    + "，存在超卖或漏扣，请立即排查";
         }
-        return "✅ 数据一致（" + mode.getLabel() + "）：压测前 " + r.getBeforeStock()
-                + " - 成功 " + r.getSuccessCount() + " = " + r.getFinalStock()
+        return "✅ 数据一致（" + mode.getLabel() + "）：" + calc + " = " + r.getFinalStock()
                 + "，无超卖。耗时 " + r.getCostMs() + " ms，QPS "
                 + r.formattedQps().toPlainString() + "，被正确拒绝 " + r.getFailCount() + " 次";
     }

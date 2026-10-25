@@ -102,7 +102,7 @@ CREATE TABLE stock (
     id              BIGINT        NOT NULL AUTO_INCREMENT,
     product_id      BIGINT        NOT NULL COMMENT '商品 id',
     quantity        INT           NOT NULL DEFAULT 0 COMMENT '当前可用库存',
-    locked_quantity INT           NOT NULL DEFAULT 0 COMMENT '锁定库存（已下单未出库）',
+    locked_quantity INT           NOT NULL DEFAULT 0 COMMENT '预留：锁定库存（当前版本未启用，单店场景为开单即出库，不需要预占）',
     avg_cost        DECIMAL(12,4) NOT NULL DEFAULT 0.0000 COMMENT '移动加权平均成本',
     version         INT           NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
     update_time     DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

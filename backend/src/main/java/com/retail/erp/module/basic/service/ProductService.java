@@ -86,7 +86,6 @@ public class ProductService {
         Stock stock = new Stock();
         stock.setProductId(entity.getId());
         stock.setQuantity(0);
-        stock.setLockedQuantity(0);
         stock.setAvgCost(BigDecimal.ZERO);
         stock.setVersion(0);
         stockMapper.insert(stock);

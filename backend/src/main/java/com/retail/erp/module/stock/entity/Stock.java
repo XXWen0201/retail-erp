@@ -31,10 +31,6 @@ public class Stock implements Serializable {
     /** 当前可用库存 */
     private Integer quantity;
 
-    @TableField("locked_quantity")
-    /** 锁定库存（已下单未出库） */
-    private Integer lockedQuantity;
-
     @TableField("avg_cost")
     /** 移动加权平均成本 */
     private BigDecimal avgCost;
